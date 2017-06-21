@@ -39,8 +39,15 @@ def atomic_name(number):
     return element_names[number - 1]
 
 def atomic_weight(number):
-    assert isinstance(number, int)
     return element_weights[number - 1]
+
+def atoms_to_list(atoms):
+    return [Atom(n=n, x=x, g=g) for n, x, g in zip(atoms.n, atoms.x, atoms.g)]
+
+def list_to_atoms(atoms):
+    return Atoms(n=[atom.n for atom in atoms],
+	         x=[atom.x for atom in atoms],
+		 g=[atom.g for atom in atoms])
 
 element_names = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra']
 
