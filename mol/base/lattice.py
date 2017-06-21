@@ -3,6 +3,21 @@ from numpy import outer, dot, cross, arctan2
 from numpy.linalg import norm
 from mol.base.linear import angle, normalized
 
+class Lattice(object):
+    def __init__(self, lattice):
+        self.lattice = lattice
+        self.reciprocal_lattice = reciprocal(lattice)
+        self.volume = volume(lattice)
+        self.reciprocal_volume = volume(self.reciprocal_lattice)
+
+
+def direct_to_cartesian(coordinates, lattice):
+    return coordinates @ lattice
+
+
+def cartesian_to_direct(coordinates, reciprocal_lattice):
+    return coordinates @ reciprocal_lattice.T / np.pi / 2
+
 
 def volume(lattice):
     return dot(cross(lattice[0], lattice[1]), lattice[2])

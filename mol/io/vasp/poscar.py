@@ -1,6 +1,8 @@
 import numpy as np
 from collections import OrderedDict
-from mol.base.atom import Atom, Atoms, atomic_number
+from mol.base.atom import Atom, Atoms, atomic_number, atoms_to_list, list_to_atoms
+import mol.base.atom as atom
+from mol.base.lattice import Lattice, direct_to_cartesian, cartesian_to_direct
 
 class Poscar(object):
     def __init__(self, comment, lattice, atoms, selective_dynamics_flags=None):
@@ -105,13 +107,93 @@ def read_poscar(path):
             coordinate = read_coordinates(f, n_atoms)
             flag = None
         if not cartesian:
-            coordinate = vectors_transform(coordinate, lattice)
+            # coordinate = vectors_transform(coordinate, lattice)
+            coordinate = direct_to_cartesian(coordinate, lattice)
         coordinate *= universal_scaling_factor
         lattice *= universal_scaling_factor
         numbers = atomic_numbers(element)
         # atoms = [Atom(n, r) for n, r in zip(numbers, coordinate)]
         atoms = Atoms(numbers, coordinate)
-        return Poscar(comment, lattice, atoms, flag)
+        return Poscar(comment, Lattice(lattice), atoms, flag)
 
-def write_poscar(path):
-    ...
+
+def sorted_atoms(atoms, sort):
+    al = atoms_to_list(atoms)
+    sal = sorted(al, key=lambda a: sort(a.n))
+    return list_to_atoms(sal)
+
+
+def make_elements(atoms):
+    ret = OrderedDict()
+    for n in atoms.n:
+        name = atom.atomic_name(n)
+        if name not in ret:
+            ret[name] = 0
+        ret[name] += 1
+    return ret
+
+
+def TF(boolean):
+    if boolean:
+        return 'T'
+    else:
+        return 'F'
+
+
+def atoms_and_lattice_for_write(poscar, universal_scaling_factor=1.0, cartesian=True, sort=lambda x: x):
+    atoms = sorted_atoms(poscar.atoms, sort=sort)
+    lattice = poscar.lattice.lattice / universal_scaling_factor
+    if cartesian:
+        atoms.x = atoms.x / universal_scaling_factor
+    else:
+        atoms.x = cartesian_to_direct(
+                atoms.x / universal_scaling_factor,
+                poscar.lattice.reciprocal_lattice * universal_scaling_factor)
+    return atoms, lattice
+
+
+def write_comment(f, comment):
+    f.write(comment + '\n')
+    
+
+def write_universal_scaling_factor(f, universal_scaling_factor):
+    f.write("{:<019.14}\n".format(universal_scaling_factor))
+
+
+def write_lattice(f, lattice):
+    for lat in lattice:
+        f.write(" {:<021.16} {:<021.16} {:<021.16}\n".format(*[l for l in lat]))
+
+
+def write_element(f, atoms):
+    element_dict = make_elements(atoms)
+    for key in element_dict.keys():
+        f.write(" {:>4}".format(key))
+    f.write('\n')
+    for val in element_dict.values():
+        f.write(" {:>4}".format(val))
+    f.write('\n')
+
+
+def write_poscar(path, poscar, universal_scaling_factor=1.0, cartesian=True, sort=lambda x: x):
+    atoms, lattice = atoms_and_lattice_for_write(
+            poscar, universal_scaling_factor, cartesian, sort)
+    with open(path, 'w') as f:
+        write_comment(f, poscar.comment)
+        write_universal_scaling_factor(f, universal_scaling_factor)
+        write_lattice(f, lattice)
+        write_element(f, atoms)
+        if poscar.selective_dynamics_flags is not None:
+            f.write("Selective dynamics\n")
+        if cartesian:
+            f.write("Cartesian\n")
+        else:
+            f.write("Direct\n")
+        if poscar.selective_dynamics_flags is None:
+            for x in atoms.x:
+                f.write("{:< 020.14} {:< 020.14} {:< 020.14}\n".format(x[0], x[1], x[2]))
+        else:
+            for x, flag in zip(atoms.x, poscar.selective_dynamics_flags):
+                f.write("{:< 020.14} {:< 020.14} {:< 020.14}   {}   {}   {}\n".format(
+                    x[0], x[1], x[2], TF(flag[0]), TF(flag[1]), TF(flag[2])))
+        f.write('\n')
